@@ -26,17 +26,48 @@ module Mixlib
       base.configuration = Hash.new
     end 
     
-    # Loads a given ruby file, and runs instance_eval against it in the context of the current 
+    # Loads a given ruby file, or Marshal encoded Hash stored as a file. 
+    # Runs instance_eval against it in the context of the current 
     # object.  
     #
     # Raises an IOError if the file cannot be found, or is not readable.
     #
     # === Parameters
-    # <string>:: A filename to read from
+    # filename<string>:: A filename to read from
     def from_file(filename)
-      self.instance_eval(IO.read(filename), filename, 1)
+      from_string(File.read(filename),filename)
     end
-    
+
+    # Loads config from a string, Which is either ruby code, or a marshal encoded Hash 
+    # object (stored as a binary string).
+    #
+    # === Parameters
+    # <string>:: A string to read from
+    def from_string(string, filename=nil)
+      if string[0] == Marshal::MAJOR_VERSION && string[1] == Marshal::MINOR_VERSION
+        self.configuration = Marshal::load(string)
+      elsif filename
+        self.instance_eval(string, filename, 1)
+      else
+        self.instance_eval(string)
+      end
+    end
+
+    # Spit out a Marshal encoded string of the Configuratoin Hash.
+    def to_s
+      Marshal.dump(configuration)
+    end
+
+    # Save configuration to file, as a Marshal encoded Hash object.
+    #
+    # === Parameters
+    # <string>:: A filename to read from
+    def to_file(filename)
+      File.open(filename,"w") do |out|
+        out << to_s
+      end
+    end
+
     # Pass Mixlib::Config.configure() a block, and it will yield self.configuration.
     #
     # === Parameters
